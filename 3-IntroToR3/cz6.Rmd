@@ -1,0 +1,43 @@
+---
+title: "cz6"
+author: "grzegorz"
+date: "2024-10-22"
+output: html_document
+---
+
+
+## Część 6: Pętle i iteracje
+
+1.  **Zadanie 1:** Napisz pętlę `for`, która wypisze liczby od 1 do 5.
+```{r}
+for (i in 1:5) {
+  print(i)
+}
+```
+
+
+2.  **Zadanie 2:** Użyj pętli `while`, aby obliczyć silnię liczby 5.
+```{r}
+n<-5
+silnia<-1
+i<-1
+
+```
+```{r}
+
+while(i<=n){
+  silnia<-silnia*i
+  i<-i+1
+  }
+print(silnia)
+```
+
+
+
+3.  **Zadanie 3:** Stwórz macierz $2 \times 5$ wypełnioną kolumnami i za pomocą funkcji `apply()` oblicz sumę elementów w każdym wierszu.
+
+4.  **Zadanie 4:** Użyj funkcji `sapply()` na liście $[1\!:\!3,\; 4\!:\!6,\; 7\!:\!9]$ do obliczenia sumy elementów każdej podlisty.
+
+5.  **Zadanie 5:** Napisz pętlę `repeat`, która będzie zwiększać zmienną $x$ o 2, aż $x$ przekroczy 10.
+
+6.  **Zadanie 6:** Użyj funkcji `tapply()` do obliczenia średniej długości słów w grupach tekstów.

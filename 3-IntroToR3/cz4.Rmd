@@ -1,0 +1,49 @@
+---
+title: "cz4"
+author: "grzegorz"
+date: "2024-10-22"
+output: html_document
+---
+## Część 4: Praca z ramkami danych (data frames)
+
+1.  **Zadanie 1:** Utwórz ramkę danych zawierającą informacje o produktach: nazwa (tekst), cena (liczba), ilość (liczba całkowita).
+```{r}
+produkty<-data.frame(
+  nazwa=c("komputer","klawiatura","długopis"),
+  cena=c(999.99,69.99,12.99),
+  liczba=c(18,18,24)
+)
+```
+
+
+2.  **Zadanie 2:** Wyświetl kolumnę `'nazwa'` z ramki danych produktów.
+```{r}
+produkty$nazwa
+```
+
+3.  **Zadanie 3:** Dodaj nową kolumnę `'wartość'` obliczaną jako cena pomnożona przez ilość.
+```{r}
+produkty$wartość<-produkty$cena*produkty$liczba
+```
+```{r}
+print(produkty)
+```
+
+
+4.  **Zadanie 4:** Usuń kolumnę `'ilość'` z ramki danych.
+```{r}
+produkty$liczba<-NULL
+```
+
+5.  **Zadanie 5:** Wyświetl strukturę ramki danych za pomocą funkcji `str()`.
+```{r}
+str(produkty)
+```
+
+
+6.  **Zadanie 6:** Podaj nazwy kolumn i wierszy w ramce danych.
+
+```{r}
+names(produkty)
+```
+

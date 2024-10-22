@@ -1,0 +1,56 @@
+---
+title: "cz5"
+author: "grzegorz"
+date: "2024-10-22"
+output: html_document
+---
+
+## Część 5: Funkcje logiczne i warunkowe
+
+1.  **Zadanie 1:** Sprawdź, czy liczba 7 jest większa od 5 i jednocześnie mniejsza od 10.
+```{r}
+e<-7
+f<-5
+g<-10
+warunek<-(e>f)&(e<g)
+(7>5)&(7<10)
+```
+
+
+2.  **Zadanie 2:** Dla wektora $[-3, 2, 5]$ użyj funkcji `ifelse()`, aby przypisać "Dodatnia" lub "Ujemna" do każdego elementu.
+```{r}
+wektor5_2<-c(-3, 2, 5)
+```
+```{r}
+wyniki<-ifelse(wektor5_2>0,"Dodatnia", "Ujemna")
+```
+```{r}
+print(wyniki)
+```
+
+
+3.  **Zadanie 3:** Sprawdź, czy jakikolwiek element wektora $[FALSE, FALSE, TRUE]$ jest prawdziwy.
+```{r}
+wektor5_3<-c(FALSE, FALSE, TRUE)
+```
+```{r}
+any(wektor5_3==TRUE)
+```
+
+
+4.  **Zadanie 4:** Znajdź indeksy liczb parzystych w wektorze $[1, 2, 3, 4, 5, 6]$.
+```{r}
+wektor5_4<-c(1, 2, 3, 4, 5, 6)
+```
+
+```{r}
+indeks<-which(wektor5_4%%2==0)
+```
+```{r}
+print(indeks)
+```
+
+
+5.  **Zadanie 5:** Napisz instrukcję `if...else`, która sprawdzi, czy dana liczba jest podzielna przez 3.
+
+6.  **Zadanie 6:** Użyj operatora NOT, aby odwrócić wynik porównania $x == y$.
