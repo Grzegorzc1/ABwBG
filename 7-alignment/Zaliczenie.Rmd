@@ -1,0 +1,235 @@
+---
+title: "Zaliczenie1"
+author: "Grzegorz Czarnecki"
+date: "2024-11-26"
+output: html_document
+---
+
+# Zaliczenie 1
+
+## Instrukcje
+
+**Zmapuj załączoną sekwencję *Escherichia coli* do genomu referencyjnego, wcześniej dokonując preprocessingu danych sekwencyjnych. Proszę o wizualną wersję raportu (w dowolnej formie), wygenerowany plik .BAM oraz pełny kod źródłowy wraz z komentarzami.**
+
+\
+Punktowane są: 
+
+-   sposób przeprowadzenia analizy (pamiętaj, że wiele parametrów jest modyfikowalnych),
+
+-   efektywność kodu, 
+
+-   opis działań (chcę wiedzieć na każdym etapie, co i dlaczego jest robione), 
+
+-   przejrzystość i estetyka prezentacji. 
+
+Najważniejszy jest dla mnie sposób rozumowania (dlatego bardzo ważny jest opis działań) oraz przejrzystość prezentacji wyników. Bardzo mile widziana jest kreatywność i nieszablonowe podejście.
+
+-   Forma końcowa projektu dowolna - może być to plik md/Rmd, ale także plik docx, pdf czy pptx.
+
+<!-- -->
+
+-   W przypadku wyboru formatu md/Rmd kod źródłowy może być zagnieżdzony wewnątrz pliku z wizualizacją, w przeciwnym razie należy umieścić go jako osobny skrypt (*dla zaawansowanych - ewentualnie skrypty, jeżeli korzystasz z więcej niż jednego języka*).
+
+Oprócz załączenia plików tutaj, zamieść kod źródłowy również w swoim repozytorium GitHub.
+
+## Załadowanie potrzebnych pakietów
+
+```{r}
+library(BiocManager)
+```
+
+```{r}
+library(ShortRead)
+library(Biostrings)
+```
+
+## Zaimportowanie pliku z sekwencją E. coli
+
+```{r}
+sekwencja_e_coli<-readFastq("C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/ecoli_raw.fq")
+```
+
+## Analiza jakości
+
+```{r}
+qa_result <- qa(sekwencja_e_coli, lane="default")
+```
+
+Wytworzenie raportu analizy jakości sekwencji
+
+```{r}
+report(qa_result, dest = "C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/RAPORT_QA")
+```
+
+## Przycinanie bazy o niskiej jakości odczytu Ustalenie wartości Phred dla progu jakości
+
+```{r}
+phred_threshold <- 30
+```
+
+Obliczenie odpowiedniego symbolu
+
+```{r}
+quality_symbol <- intToUtf8(phred_threshold + 33)
+```
+
+```{r}
+trimmed_read <- trimTailw(sekwencja_e_coli, k = 2, a = quality_symbol, halfwidth = 1)
+```
+
+Ocena długości sekwencji przed przycinaniem
+
+```{r}
+length(sekwencja_e_coli)
+```
+
+Ocena długości sekwencji po przycinaniu
+
+```{r}
+length(trimmed_read)
+```
+
+## Filtrowanie odczytów w celu usunięcia odczytów o niskliej jakości
+
+Filtrowanie odczytyów przy minimalnej akceptowalnej długości odczytu 25bp, ponieważ wykazywało najlepsze wyniki w analizie jakości
+
+```{r}
+filtrowanie <- trimmed_read[width(trimmed_read) >= 25]
+```
+
+Ocena długości sekwencji po filtrowaniu
+
+```{r}
+length(filtrowanie)
+```
+
+Histogram odczytów przed przycinaniem
+
+```{r}
+hist(width(sekwencja_e_coli), breaks = 50, main = "Długość odczytów przed przycinaniem", xlab = "Długość (bp)")
+```
+
+Histogram odczytów po przycinaniem
+
+```{r}
+hist(width(filtrowanie), breaks = 50, main = "Długość odczytów po przycinaniem", xlab = "Długość (bp)")
+```
+
+## Usuwanie adapterów Definiowanie sekwencji adaptorowej
+
+```{r}
+adapter_seq <- DNAString("AGATCGGAAGAGC")
+```
+
+Przycinanie adapterów
+
+```{r}
+trimmed_reads1_adapt <- trimLRPatterns(
+  Lpattern = adapter_seq,
+  subject = filtrowanie
+)
+```
+
+```{r}
+sekwencja_procersowana<-trimmed_reads1_adapt
+```
+
+Ocena długości sekwencji po przycinaniu sekwencji adaptorowych
+
+```{r}
+length(sekwencja_procersowana)
+```
+
+Wytworzeniu pliku FastQ po przycinaiu i flitrowaniu
+
+```{r}
+writeFastq(filtrowanie, "C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/ecoli_processed.fq")
+```
+
+Analiza jakości wytworoznego pliku FastQ po przycinaniu i flitrowaniu
+
+```{r}
+qa_resultp <- qa("C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/ecoli_processed.fq", type = "fastq")
+
+```
+
+```{r}
+report(qa_resultp, dest = "C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/Raport_QA_processed")
+```
+
+## Mapowanie Załadowanie genomu referyncyjnego
+
+```{r}
+genom_referencyjny<-readDNAStringSet("C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/ecoli_genome.fna.gz")
+```
+
+Załadowanie potrzebnego pakietu
+
+```{r}
+library(Rsubread)
+```
+
+Identyfikowanie genomu referencyjnego
+
+```{r}
+buildindex(basename = "ecoli_index", reference = "C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/ecoli_genome.fna.gz")
+```
+
+Mapowanie odczytów do genomu referencyjnego
+
+```{r}
+align(index = "ecoli_index",
+      readfile1 = "C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/ecoli_processed.fq",
+      input_format = "FASTQ",
+      output_file = "C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/aligned_sample.BAM")
+```
+
+Procent zmapowanych odczytów
+
+```{r}
+251374/251495*100
+```
+
+Procent niezmapowanych odczytów
+
+```{r}
+121/251495*100
+```
+
+## Analiza mapowania Załadowanie potrzebnego pakietu
+
+```{r}
+library(GenomicAlignments)
+```
+
+Importowanie zmapowanych odczytów
+
+```{r}
+odczyty_map<-readGAlignments("C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/aligned_sample.BAM")
+```
+
+Obliczenia pokrycia genomu
+
+```{r}
+dane_pokrycia <- coverage(odczyty_map)
+```
+
+Wizualizacja
+
+```{r}
+cov_df <- as.data.frame(dane_pokrycia[[1]])
+cov_df$position <- as.numeric(rownames(cov_df))
+```
+
+```{r}
+library(ggplot2)
+```
+
+```{r}
+
+ggplot(cov_df[1:25000, ], aes(x = position, y = value)) +
+  geom_line(color = "blue") +
+  labs(title = "Pokrycie genomu E. coli",
+       x = "Pozycja w genomie",
+       y = "Liczba zmapowanych odczytów")
+```
