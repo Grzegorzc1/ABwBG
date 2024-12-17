@@ -1,0 +1,159 @@
+---
+title: "cw11"
+author: "Grzegorz Czarnecki"
+date: "2024-12-17"
+output: html_document
+---
+```{r}
+library(rrBLUP)
+```
+```{r}
+install.packages("rrBLUP")
+```
+```{r}
+packages<-c(
+  "BGLR"
+    ,   "DT"
+    ,   "SNPRelate"
+    ,   "dplyr"
+    ,   "qqman"
+    ,   "poolr")
+```
+Instalacja wymaganych pakietów
+```{r}
+{for (pkg in packages){
+  if(!require(pkg, character.only=TRUE)){
+    install.packages(pkg, dependencies = TRUE)
+    }
+  }
+}
+```
+
+
+```{r}
+install.packages("dplyr")
+```
+```{r}
+library(dplyr)
+```
+```{r}
+library(qqman)
+```
+```{r}
+library(poolr)
+```
+```{r}
+library(DT)
+```
+```{r}
+library(SNPRelate)
+```
+```{r}
+install.packages("SNPRelate")
+```
+```{r}
+BiocManager::install("SNPRelate")
+```
+```{r}
+setwd("C:/Users/s207318/Desktop/analiza/ABWG-GWAS")
+
+```
+```{r}
+Geno<-read_ped("sativas413.ped")
+```
+```{r}
+library(BiocManager)
+```
+```{r}
+library(BGLR)
+```
+```{r}
+p=Geno$p
+n=Geno$n
+Geno=Geno$x
+```
+Podglądanie danych genotypowych
+```{r}
+head(Geno)
+Geno
+```
+informacjE o subpopulacjach
+```{r}
+fam<-read.table("sativas413.fam")
+```
+
+```{r}
+head(fam)
+```
+Inormaccję o mapowaniu
+```{r}
+map<-read.table("sativas413.map")
+head(map)
+```
+```{r}
+Geno[Geno==2]<-NA
+Geno[Geno==0]<-0
+Geno[Geno==1]<-1
+Geno[Geno==3]<-2
+```
+
+```{r}
+Geno
+```
+Konwersja macierzy
+```{r}
+Geno<-matrix(Geno,nrow=p, ncol=n,byrow=TRUE)
+```
+```{r}
+Geno
+```
+Transpozycja
+```{r}
+Geno<-t(Geno)
+```
+```{r}
+Geno
+```
+Spr. wymiarów macierzy genotypowej
+```{r}
+dim(Geno)
+```
+wczytanie danych fenotypowych
+```{r}
+rice.pheno<-read.table("RiceDiversity_44K_Phenotypes_34traits_PLINK.txt", header = TRUE, stringsAsFactors = FALSE,sep="\t")
+```
+```{r}
+head(rice.pheno)
+```
+Spr. zgodność
+```{r}
+dim(rice.pheno)
+```
+wyodrębnienie pierwszej cechy
+```{r}
+y<-matrix(rice.pheno$Flowering.time.at.Arkansas)
+rownames(y)<-rice.pheno$NSFTVID
+index<-!is.na(y)
+y<-y[index,1,drop=FALSE]
+Geno<-Geno[index, ]
+```
+
+
+```{r}
+for (j in 1:ncol(Geno)){
+  Geno[, j]<-ifelse(is.na(Geno[, j]), mean(Geno[, j],
+na.rm=TRUE), Geno)
+}
+```
+odfiltrujmarkeryzMAF<5%
+```{r}
+p<-colSums(Geno)/(2*nrow(Geno))
+maf<-ifelse(p> 0.5, 1-p, p)
+maf.index<-which(maf<0.05)
+Geno1<-Geno[, - maf.index]
+```
+
+```{r}
+Map1<-map[-maf.index, ]
+```
+
