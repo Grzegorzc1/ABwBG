@@ -1,0 +1,172 @@
+---
+title: "Untitled"
+author: "Grzegorz Czarnecki"
+date: "2024-12-03"
+output: html_document
+---
+Instalacja i załadowanie niezbędnych pakietów
+```{r}
+library(BiocManager)
+```
+```{r}
+BiocManager::install("VariantTools")
+```
+```{r}
+library(VariantTools)
+```
+
+```{r}
+library(Rsamtools)
+```
+```{r}
+library(GenomicRanges)
+library(GenomicFeatures)
+library(VariantAnnotation)
+library(BiocParallel)
+```
+ Wyświetlanie pomocy dla pakietu `VariantTools`:
+
+```{R}
+??VariantTools
+```
+
+```{r}
+??
+
+```
+Zadanie 3: Konfiguracja środowiska pracy
+Ustawianie katalogu roboczego:
+
+```{R}
+setwd("C:/Users/s207318/Desktop/analiza/alignment")
+```
+Sprawddzanie, czy pliki są dostępne:
+
+```{R}
+list.files()
+```
+Zadanie 4: Wczytanie danych
+Wczytanie plik BAM:
+
+```{R}
+bamfile <- "C:/Users/s207318/Desktop/analiza/alignment/aligned_sample.BAM"
+bam <- BamFile(bamfile)
+```
+ Wczytanie genomu referencyjny:
+
+```{R}
+ref_genome <- "C:/Users/s207318/Desktop/analiza/alignment/ecoli_reference.fasta"
+fa <- FaFile(ref_genome)
+```
+Sortowanie pliku BAM według współrzędnych
+
+```{r}
+# Zdefiniuj ścieżkę wejściową i wyjściową
+input_bam <- "C:/Users/s207318/Desktop/analiza/alignment/aligned_sample.BAM"
+output_bam <- "C:/Users/s207318/Desktop/analiza/alignment/sorted_aligned_sample.BAM"
+```
+```{r}
+# Wykonaj sortowanie
+```
+
+
+```{r}
+sortBam(file = input_bam, destination = output_bam, overwrite = TRUE)
+```
+```{r}
+#Zdefiniuj przesortowany plik
+sorted_bam <- "C:/Users/s207318/Desktop/analiza/alignment/sorted_aligned_sample.BAM.bam" 
+```
+
+Indeksowanie pliku FASTA oraz przesortowanego pliku BAM:
+
+```{R}
+indexFa(ref_genome)
+indexBam(sorted_bam)
+```
+Zadanie 5: Kontrola jakości danych sekwencyjnych
+Sprawdzanie nagłówek pliku BAM:
+
+```{R}
+scanBamHeader(bam)
+```
+
+Sprawdzanie podstawowe statystyki pliku BAM:
+
+```{R}
+idxstats <- idxstatsBam(sorted_bam)
+print(idxstats)
+```
+Obliczanie i zwizualizanie pokrycie genomu:
+```{r}
+coverage_data <- coverage(sorted_bam)
+summary(coverage_data[[1]])
+```
+
+```{r}
+plot(coverage_data[[1]], main="Pokrycie genomu dla sekwencji U00096.3", ylab="Pokrycie", xlab="Pozycja w genomie")
+```
+Zadanie 6: Wykrywanie wariantów
+Zdefiniowanie parametrów skanowania za pomocą `pileup()` z pakietu `Rsamtools`
+```{r}
+pileup_param <- PileupParam(
+    distinguish_strands = FALSE,
+    distinguish_nucleotides = TRUE,
+    min_base_quality = 20
+)
+pile <- pileup(sorted_bam, scanBamParam = ScanBamParam(), pileupParam = pileup_param)
+
+```
+
+
+```{r}
+library(dplyr)
+
+```
+```{r}
+install.packages("dplyr")
+```
+Konwertowanie dane pileup do ramki danych z uzgodnieniem nazw sekwencji
+```{r}
+library(dplyr)
+
+pile_df <- pile %>%
+    mutate(seqnames = as.character(seqnames)) %>%
+    mutate(seqnames = ifelse(seqnames == "U00096.3", "NC_000913.3", seqnames))
+
+```
+ Grupowanie dane według pozycji
+
+```{r}
+variant_candidates <- pile_df %>%
+    group_by(seqnames, pos) %>%
+    summarise(
+        total = sum(count),
+        A = sum(count[nucleotide == "A"]),
+        C = sum(count[nucleotide == "C"]),
+        G = sum(count[nucleotide == "G"]),
+        T = sum(count[nucleotide == "T"]),
+        .groups = 'drop'
+    ) %>%
+    mutate(
+        ref = as.character(getSeq(fa, GRanges(seqnames, IRanges(pos, pos))))
+    ) %>%
+    rowwise() %>%
+    mutate(
+        # Obliczanie alternatywnych alleli
+        alt_alleles = list(setdiff(c("A", "C", "G", "T"), ref)),
+        # Liczenie odczytów dla referencyjnego i alternatywnych alleli
+        ref_count = sum(c_across(c("A", "C", "G", "T"))[ref]),
+        alt_count = sum(c_across(c("A", "C", "G", "T"))[alt_alleles])
+    ) %>%
+    ungroup() %>%
+    # Filtracja na podstawie minimalnej liczby odczytów dla wariantu
+    filter(alt_count >= 5) %>%
+    # Opcjonalne filtrowanie na podstawie proporcji
+    filter((alt_count / total) >= 0.2)
+
+```
+```{r}
+# Przykład wyświetlenia wariantów
+head(variant_candidates)
+```
