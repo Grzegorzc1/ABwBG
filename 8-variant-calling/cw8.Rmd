@@ -4,13 +4,17 @@ author: "Grzegorz Czarnecki"
 date: "2024-12-03"
 output: html_document
 ---
-Instalacja i załadowanie niezbędnych pakietów
+
+# Instalacja i załadowanie niezbędnych pakietów
+
 ```{r}
 library(BiocManager)
 ```
+
 ```{r}
 BiocManager::install("VariantTools")
 ```
+
 ```{r}
 library(VariantTools)
 ```
@@ -18,63 +22,82 @@ library(VariantTools)
 ```{r}
 library(Rsamtools)
 ```
+
 ```{r}
 library(GenomicRanges)
 library(GenomicFeatures)
 library(VariantAnnotation)
 library(BiocParallel)
 ```
- Wyświetlanie pomocy dla pakietu `VariantTools`:
+
+# Wyświetlanie informacji dla pakietu `VariantTools`:
 
 ```{R}
 ??VariantTools
 ```
 
-```{r}
-??
-
+```{R}
+??GenomicRanges
 ```
-Zadanie 3: Konfiguracja środowiska pracy
-Ustawianie katalogu roboczego:
+
+```{R}
+??Rsamtools
+```
+
+```{R}
+??GenomicFeatures
+```
+
+```{R}
+??VariantAnnotation
+```
+
+# Konfiguracja środowiska pracy
+
+## Ustawianie katalogu roboczego:
 
 ```{R}
 setwd("C:/Users/s207318/Desktop/analiza/alignment")
 ```
-Sprawddzanie, czy pliki są dostępne:
+
+## Sprawdzanie, czy pliki są dostępne:
 
 ```{R}
 list.files()
 ```
-Zadanie 4: Wczytanie danych
-Wczytanie plik BAM:
+
+# Wczytywanie danych jako plik BAM:
 
 ```{R}
 bamfile <- "C:/Users/s207318/Desktop/analiza/alignment/aligned_sample.BAM"
 bam <- BamFile(bamfile)
 ```
- Wczytanie genomu referencyjny:
+
+## Wczytanie genomu referencyjny:
 
 ```{R}
 ref_genome <- "C:/Users/s207318/Desktop/analiza/alignment/ecoli_reference.fasta"
 fa <- FaFile(ref_genome)
 ```
-Sortowanie pliku BAM według współrzędnych
+
+## Sortowanie pliku BAM według współrzędnych
+
+Definiowanie ścieżki wyjścia i wejścia
 
 ```{r}
-# Zdefiniuj ścieżkę wejściową i wyjściową
 input_bam <- "C:/Users/s207318/Desktop/analiza/alignment/aligned_sample.BAM"
 output_bam <- "C:/Users/s207318/Desktop/analiza/alignment/sorted_aligned_sample.BAM"
 ```
-```{r}
-# Wykonaj sortowanie
-```
 
+## Sortowanie pliku
 
 ```{r}
 sortBam(file = input_bam, destination = output_bam, overwrite = TRUE)
 ```
+
+Definiowanie przesortowanego pliku
+
 ```{r}
-#Zdefiniuj przesortowany plik
 sorted_bam <- "C:/Users/s207318/Desktop/analiza/alignment/sorted_aligned_sample.BAM.bam" 
 ```
 
@@ -84,8 +107,8 @@ Indeksowanie pliku FASTA oraz przesortowanego pliku BAM:
 indexFa(ref_genome)
 indexBam(sorted_bam)
 ```
-Zadanie 5: Kontrola jakości danych sekwencyjnych
-Sprawdzanie nagłówek pliku BAM:
+
+# Kontrola jakości danych sekwencyjnych Sprawdzanie nagłówek pliku BAM:
 
 ```{R}
 scanBamHeader(bam)
@@ -97,7 +120,9 @@ Sprawdzanie podstawowe statystyki pliku BAM:
 idxstats <- idxstatsBam(sorted_bam)
 print(idxstats)
 ```
+
 Obliczanie i zwizualizanie pokrycie genomu:
+
 ```{r}
 coverage_data <- coverage(sorted_bam)
 summary(coverage_data[[1]])
@@ -106,8 +131,9 @@ summary(coverage_data[[1]])
 ```{r}
 plot(coverage_data[[1]], main="Pokrycie genomu dla sekwencji U00096.3", ylab="Pokrycie", xlab="Pozycja w genomie")
 ```
-Zadanie 6: Wykrywanie wariantów
-Zdefiniowanie parametrów skanowania za pomocą `pileup()` z pakietu `Rsamtools`
+
+# Wykrywanie wariantów Zdefiniowanie parametrów skanowania za pomocą `pileup()` z pakietu `Rsamtools`
+
 ```{r}
 pileup_param <- PileupParam(
     distinguish_strands = FALSE,
@@ -119,14 +145,15 @@ pile <- pileup(sorted_bam, scanBamParam = ScanBamParam(), pileupParam = pileup_p
 ```
 
 
-```{r}
-library(dplyr)
 
-```
+
+
+## Konwertowanie dane pileup do ramki danych z uzgodnieniem nazw sekwencji
+
+Instalacja potrzebnych pakietów
 ```{r}
 install.packages("dplyr")
 ```
-Konwertowanie dane pileup do ramki danych z uzgodnieniem nazw sekwencji
 ```{r}
 library(dplyr)
 
@@ -135,7 +162,8 @@ pile_df <- pile %>%
     mutate(seqnames = ifelse(seqnames == "U00096.3", "NC_000913.3", seqnames))
 
 ```
- Grupowanie dane według pozycji
+
+Grupowanie dane według pozycji
 
 ```{r}
 variant_candidates <- pile_df %>%
@@ -153,20 +181,38 @@ variant_candidates <- pile_df %>%
     ) %>%
     rowwise() %>%
     mutate(
-        # Obliczanie alternatywnych alleli
         alt_alleles = list(setdiff(c("A", "C", "G", "T"), ref)),
-        # Liczenie odczytów dla referencyjnego i alternatywnych alleli
         ref_count = sum(c_across(c("A", "C", "G", "T"))[ref]),
         alt_count = sum(c_across(c("A", "C", "G", "T"))[alt_alleles])
     ) %>%
     ungroup() %>%
-    # Filtracja na podstawie minimalnej liczby odczytów dla wariantu
     filter(alt_count >= 5) %>%
-    # Opcjonalne filtrowanie na podstawie proporcji
     filter((alt_count / total) >= 0.2)
 
 ```
+Funkcja list w alt_alleles została użyta do obliczenia alternatywnych alleli, a sum w ref_count i al_count do liczenia odpowiednio dla odczytów genu referencyjnego oraz alternatywnych alleli. Funkcja filter została użyta w celu filtracji na podstawie minimalnej liczby odczytów dla wariantów, w tym wypadku równych lub wyższych 5 i na podstawie proporcji liczby alternatywnych alleli w porównaniu z całkowitą liczbą.
+Nie było możliwe dalsze analizy ponieważ działanienie programu nie pozwalało na grupowanie danych.
+
+# Przykładowe wyświetlanie danych
 ```{r}
-# Przykład wyświetlenia wariantów
 head(variant_candidates)
+```
+## Filtrowanie i eksportowanie wyników do pliku
+Filtrowanie wariantów na podstawie jakości i głębokości pokryci
+```{r}
+filtered_variants <- variant_candidates %>%
+    filter(total >= 10, alt_count / total >= 0.2, alt_count >= 5)
+```
+Wyświetlanie liczby wariantów przed i po filtrowaniu
+```{r}
+cat("Liczba wariantów przed filtrowaniem:", nrow(variant_candidates), "\n")
+cat("Liczba wariantów po filtrowaniu:", nrow(filtered_variants), "\n")
+```
+Dokonanie konwersji do data.frame do eksportu
+```{r}
+df_variants <- as.data.frame(filtered_variants)
+```
+Eksportowanie danych do pliku CSV
+```{r}
+write.csv(df_variants, "ścieżka/do/pliku/wyniki_wariantow.csv", row.names = FALSE)
 ```
