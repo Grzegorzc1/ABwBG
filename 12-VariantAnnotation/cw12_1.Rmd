@@ -1,0 +1,89 @@
+---
+title: "Untitled"
+author: "Grzegorz Czarnecki"
+date: "2025-01-07"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+#  Przygotowanie środowiska
+
+-   Zainstalowanie pakietów `VariantAnnotation`, `GenomicRanges`, `AnnotationHub`.
+-   Załadowanie wymaganych pakietów.
+```{r}
+packages <- c("VariantAnnotation","GenomicRanges","AnnotationHub")
+
+BiocManager::install(packages)
+
+```
+```{r}
+library(VariantAnnotation)
+library(GenomicRanges)
+library(AnnotationHub)
+```
+
+
+#  Wczytywanie i eksploracja danych
+
+Wpsanie ścieżki do przykładowego pliku VCF z pakietu `VariantAnnotation`.
+Wczytanie danych do obiektu typu `VCF`.
+```{r}
+fl <- system.file("extdata", "chr22.vcf.gz", package="VariantAnnotation")
+vcf <- readVcf(fl, "hg19")
+vcf
+
+```
+
+Wyśietlenie podstawowych informacji o pliku czyli nagłówków i struktur metadanych, kolumny  informacjami o metadanych oraz o wariantach.
+
+
+# Filtrowanie i analizowanie jakości
+
+Analiza jakości - sprawdzenie kulumny 'QUAL' w 'vcf'
+```{r}
+summary(qual(vcf))
+```
+Filtrowanie wariantów - ustalenie kryterium jakości jako powyżej 99 i odfiltrowanie
+```{r}
+vcf_filtred<-vcf[!is.na(qual(vcf))& qual(vcf)>99, ]
+vcf_filtred
+```
+Analiza jakości po odfiltrowaniu
+```{r}
+summary(qual(vcf_filtred))
+```
+
+# Anotacja wariantów
+
+
+Anotacja wariantów - wykorzystanie pakietu TxDb do wzbogacenia wariantów o informacje genowe.
+```{r}
+BiocManager::install("TxDb.Hsapiens.UCSC.hg19.knownGene")
+```
+```{r}
+library(TxDb.Hsapiens.UCSC.hg19.knownGene)
+```
+```{r}
+txdb<-TxDb.Hsapiens.UCSC.hg19.knownGene
+```
+Adnotacja wariantów za pomocą funkcji 'locateVariants'
+```{r}
+gr<-rowRanges(vcf_filtred)
+loc_anno<-locateVariants(gr,txdb,AllVariants())
+head(loc_anno)
+```
+
+
+
+# Zadanie 4: Przykłady dalszej analizy
+
+-   Wybierz warianty z regionów UTR (5'UTR lub 3'UTR) i porównaj ich liczebność.
+-   Wyodrębnij warianty znajdujące się wyłącznie w regionach międzygenowych.
+
+# Zadanie 5: Podsumowanie
+
+-   Przygotuj krótkie podsumowanie wyników uzyskanych w powyższych zadaniach:
+    -   Liczba wariantów przed i po filtracji.
+    -   Liczba wariantów w regionach kodujących vs. międzygenowych.
+-   Omów możliwe ścieżki rozszerzenia analizy.
