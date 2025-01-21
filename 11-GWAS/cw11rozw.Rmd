@@ -1,0 +1,302 @@
+---
+title: "cw11rozw"
+author: "Grzegorz Czarnecki"
+date: "2025-01-07"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+Wczytanie i załadowanie potrzebnych pakietów, czyli:
+
+```         
+-   `rrBLUP`
+-   `BGLR`
+-   `DT`
+-   `SNPRelate`
+-   `dplyr`
+-   `qqman`
+-   `poolr`
+-   `qqman`
+```
+
+```{r}
+packages <- c("rrBLUP"
+   , "BGLR"
+   , "DT"
+   , "SNPRelate"
+   , "dplyr"
+   , "qqman"
+   , "poolr")
+
+{for (pkg in packages) {
+  if(!require(pkg, character.only = TRUE)) {
+    install.packages(pkg, dependencies = TRUE)
+    }
+  }
+}
+
+library(pkg, character.only = TRUE)
+```
+
+```{r}
+library(BiocManager)
+```
+
+```{r}
+library(BGLR)
+```
+
+```{r}
+library(rrBLUP)
+```
+
+```{r}
+library(DT)
+```
+
+```{r}
+library(SNPRelate)
+```
+
+```{r}
+library(dplyr)
+```
+
+```{r}
+library(qqman)
+```
+
+```{r}
+library(poolr)
+```
+
+# Wczytanie dnaych
+
+wczystanie ścieżki do pliku
+
+```{r}
+setwd("C:/Users/Grzesiek/Desktop/semestr 9/analiza_bioinfo/ABWG-GWAS")
+```
+
+Wczytanie danych genotypowych z pliku `.ped`, przy czym kolumny zostały wczytane jako osbne wartości
+
+```{r}
+Geno <- read_ped("sativas413.ped")
+p = Geno$p
+n = Geno$n
+Geno = Geno$x
+head(Geno)
+Geno
+```
+
+Wczytanie informacji o osobnikach z pliku `.fam`.
+
+```{r}
+FAM <- read.table("sativas413.fam")
+head(FAM)
+```
+
+Wczytanie informacji o mapowaniu z pliku `.map`.
+
+```{r}
+MAP <- read.table("sativas413.map")
+head(MAP)
+```
+
+Przekodowanie wartości markerów zgodnie z poniższym schematem:\
+- **2** → **NA** (brakujące dane).\
+- **0** → **0** (homozygota dla allelu głównego).\
+- **1** → **1** (heterozygota).\
+- **3** → **2** (homozygota dla allelu mniejszościowego).
+
+```{r}
+Geno[Geno == 2] <- NA
+Geno[Geno == 0] <- 0
+Geno[Geno == 1] <- 1
+Geno[Geno == 3] <- 2
+```
+
+Konwertowanie danych na macierz i dokonanie transpozycji tej macierzy.
+
+```{r}
+Geno <- matrix(Geno, nrow = p, ncol = n, byrow = TRUE)
+Geno <- t(Geno)
+```
+
+Sprawdzenie wymiarów macierzy genotypowej (liczbę osobników i markerów SNP).
+
+```{r}
+dim(Geno)
+```
+
+# Wczytanie danych fenotypowych i sprawdzenie ich zgodność z danymi genotypowymi.
+
+```{r}
+rice.pheno <- read.table("RiceDiversity_44K_Phenotypes_34traits_PLINK.txt",
+                         header = TRUE, stringsAsFactors = FALSE, sep = "\t")
+head(rice.pheno)
+
+dim(rice.pheno)
+
+
+
+rownames(Geno) <- FAM$V2
+
+table(rownames(Geno) == rice.pheno$NSFTVID)
+```
+
+Pierwsza wartoć powinna być taka sama jak w dim(Geno). Nazwy wiersza dla macierzy Geno zostały przypisane na podstawie drugiej kolumny (V2) z ramki FAM zawierającej identyfikator próbej w rownamees(Geno), table() zostało wykorzystane do sprawdzenia zgodności.
+
+## Wyodrębnienie pierwszej cechy.
+
+```{r}
+y <- matrix(rice.pheno$Flowering.time.at.Arkansas)
+rownames(y) <- rice.pheno$NSFTVID
+index <- !is.na(y)
+y <- y[index, 1, drop = FALSE]
+Geno <- Geno[index, ]
+table(rownames(Geno) == rownames(y))
+```
+
+# Przeprowadzenie kontroli jakości (QC) danych markerowych: Zastąpienie brakujących danych markerowych średnią wartością dla każdego markera.
+
+```{r}
+for (j in 1:ncol(Geno)){
+  Geno[, j] <- ifelse(is.na(Geno[, j]), mean(Geno[, j], nar.rm = TRUE), Geno[, j])
+}
+```
+
+## Odfiltruwanie markerów z MAF \< 5%.
+
+Obliczenie frekwencji allelu mniejszościowego dla każdego SNP
+
+```{r}
+p <- colSums(Geno)/(2 * nrow(Geno))
+```
+
+Definiowanie MAF
+
+```{r}
+maf <- ifelse(p > 0.5, 1-p, p)
+maf.index <- which(maf < 0.05)
+Geno1 <- Geno[, -maf.index]
+```
+
+Sprawdzanie wymiarów macierzy
+
+```{r}
+dim(Geno1)
+```
+
+Aktualizowanie pliku `.map` i podanie nowych wymiary danych genotypowych oraz informacji o markerach.
+
+```{r}
+MAP <- read.table("sativas413.map")
+dim(MAP)
+MAP1 <- MAP[-maf.index, ]
+dim(MAP1)
+```
+
+# Wykonanie analizy PCA - Utwórzenie macierzy markerów.
+
+```{r}
+Geno1 <- as.matrix(Geno1)
+sample <- row.names(Geno1)
+length(sample)
+
+colnames(Geno1) <- MAP1$V2
+snp.id <- colnames(Geno1)
+length(snp.id)
+```
+
+Utwórzenie pliku GDS.
+
+```{r}
+snpgdsCreateGeno("44k.gds", genmat = Geno1, sample.id = sample, snp.id = snp.id, 
+                 snp.chromosome = MAP1$V1, snp.position = MAP1$V4, snpfirstdim = FALSE)
+
+geno_44k <- snpgdsOpen("44k.gds")
+snpgdsSummary("44k.gds")
+```
+
+Przeprowadzenie PCA.
+
+```{r}
+pca <- snpgdsPCA(geno_44k, snp.id = colnames(Geno1))
+pca <- data.frame(sample.id = row.names(Geno1), 
+                  EV1 = pca$eigenvect[, 1], 
+                  EV2 = pca$eigenvect[, 2], 
+                  EV3 = pca$eigenvect[, 3], 
+                  EV4 = pca$eigenvect[, 4], 
+                  stringsAsFactors = FALSE)
+
+plot(pca$EV2, pca$EV1, xlab = "PC2", ylab = "PC1")
+```
+
+Wczytanie dodatkowych informacji o próbkach z pliku `gerplasm.csv`.
+
+```{r}
+pca_1 <- read.csv("RiceDiversity.44K.germplasm.csv", 
+                  header = TRUE, skip = 1, stringsAsFactors = FALSE)
+pca_2 <- pca_1[match(pca$sample.id, pca_1$NSFTV.ID), ]
+
+pca_population <- cbind(pca_2$Sub.population, pca)
+colnames(pca_population)[1] <- "population"
+
+plot(pca_population$EV1, pca_population$EV2, xlab = "PC1", ylab = "PC2", 
+     col = c(1:6)[factor(pca_population$population)])
+legend(x = "topright", legend = levels(factor(pca_population$population)), 
+       col = c(1:6), pch = 1, cex = 0.6)
+```
+
+# Przygotwanie danych do analizy GWAS - Przygotowanie danych genotypowych i fenotypowych do analizy.
+
+```{r}
+geno_final <- data.frame(marker = MAP1[, 2], chrom = MAP1[, 1], pos = MAP1[, 4], 
+                         t(Geno1 - 1), check.names = FALSE)
+
+pheno_final <- data.frame(NSFTV_ID = rownames(y), y = y)
+```
+
+Wykonanie analizy GWAS.
+
+```{r}
+GWAS <- GWAS(pheno_final, geno_final, min.MAF = 0.05, P3D = TRUE, plot = FALSE)
+```
+
+# Wyodrębnienie istotnych markerów SNP.
+
+```{r}
+GWAS_1 <- GWAS %>% filter(y != "0")
+GWAS_1 %>% filter(y < 1e-04)
+```
+
+Wykształcenie listy markerów spełniające określone warunki
+
+```{r}
+head(GWAS_1)
+```
+
+# Stwórzenie wykresu Manhattan.
+
+```{r}
+manhattan(x = GWAS_1, chr = "chrom", bp = "pos", p = "y", snp = "marker", 
+          col = c("blue4", "orange3"), suggestiveline = -log10(1e-04), logp = TRUE)
+```
+
+9.  Zinterpretuj wyniki:
+
+    Jakie markery SNP są potencjalnie istotne?
+
+    ```         
+                 marker chrom   pos         y
+    id1000001 id1000001     1 13147 1.6502857
+    id1000003 id1000003     1 73192 1.6827833
+    id1000005 id1000005     1 74969 0.2659963
+    id1000007 id1000007     1 75852 1.1653868
+    id1000008 id1000008     1 75953 1.6547334
+    id1000011 id1000011     1 91016 0.7006411
+    ```
+
+    Jakie wnioski można wyciągnąć na podstawie analizy PCA i wyników GWAS?

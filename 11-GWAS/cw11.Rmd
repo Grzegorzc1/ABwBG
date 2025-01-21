@@ -4,6 +4,7 @@ author: "Grzegorz Czarnecki"
 date: "2024-12-17"
 output: html_document
 ---
+Instalacja i wczytanie wymaganych pakietów
 ```{r}
 library(rrBLUP)
 ```
@@ -46,6 +47,9 @@ library(poolr)
 library(DT)
 ```
 ```{r}
+library(rrBLUP)
+```
+```{r}
 library(SNPRelate)
 ```
 ```{r}
@@ -54,10 +58,12 @@ install.packages("SNPRelate")
 ```{r}
 BiocManager::install("SNPRelate")
 ```
+Wytworzenie ścieżki do plików
 ```{r}
 setwd("C:/Users/s207318/Desktop/analiza/ABWG-GWAS")
 
 ```
+Wczytanie danych genotypowych
 ```{r}
 Geno<-read_ped("sativas413.ped")
 ```
@@ -77,7 +83,7 @@ Podglądanie danych genotypowych
 head(Geno)
 Geno
 ```
-informacjE o subpopulacjach
+Wczytanie informacji o subpopulacjach
 ```{r}
 fam<-read.table("sativas413.fam")
 ```
@@ -85,47 +91,47 @@ fam<-read.table("sativas413.fam")
 ```{r}
 head(fam)
 ```
-Inormaccję o mapowaniu
+Wczytanie inormaccji o mapowaniu
 ```{r}
 map<-read.table("sativas413.map")
 head(map)
 ```
 ```{r}
-Geno[Geno==2]<-NA
-Geno[Geno==0]<-0
-Geno[Geno==1]<-1
-Geno[Geno==3]<-2
+Geno[Geno ==2]<-NA
+Geno[Geno ==0]<-0
+Geno[Geno ==1]<-1
+Geno[Geno ==3]<-2
 ```
 
 ```{r}
 Geno
 ```
-Konwersja macierzy
+Konwertowanie do macierzy
 ```{r}
 Geno<-matrix(Geno,nrow=p, ncol=n,byrow=TRUE)
 ```
 ```{r}
 Geno
 ```
-Transpozycja
+Dokonanie transpozycji
 ```{r}
 Geno<-t(Geno)
 ```
 ```{r}
 Geno
 ```
-Spr. wymiarów macierzy genotypowej
+Sprawdzenie wymiarów macierzy genotypowej
 ```{r}
 dim(Geno)
 ```
-wczytanie danych fenotypowych
+Wczytanie danych fenotypowych
 ```{r}
 rice.pheno<-read.table("RiceDiversity_44K_Phenotypes_34traits_PLINK.txt", header = TRUE, stringsAsFactors = FALSE,sep="\t")
 ```
 ```{r}
 head(rice.pheno)
 ```
-Spr. zgodność
+Sprawdzenie zgodności genotypowej
 ```{r}
 dim(rice.pheno)
 ```
@@ -145,7 +151,7 @@ for (j in 1:ncol(Geno)){
 na.rm=TRUE), Geno)
 }
 ```
-odfiltrujmarkeryzMAF<5%
+odfiltrowanie markerów z MAF<5%
 ```{r}
 p<-colSums(Geno)/(2*nrow(Geno))
 maf<-ifelse(p> 0.5, 1-p, p)
